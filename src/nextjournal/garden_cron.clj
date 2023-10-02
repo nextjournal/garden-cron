@@ -60,6 +60,27 @@
   ([cron start]
    (rest (iterate #(next-cron cron %) start))))
 
+(defn cron-merge
+  ([] [])
+  ([c1] c1)
+  ([c1 c2]
+   (if (and (seq c1) (seq c2))
+     (cond
+       (.isBefore (first c1) (first c2))
+       (lazy-seq (cons (first c1) (cron-merge (rest c1) c2)))
+
+       (.isAfter (first c1) (first c2))
+       (lazy-seq (cons (first c2) (cron-merge c1 (rest c2))))
+
+       ;; coalesce equal times
+       :else
+       (lazy-seq (cons (first c1) (cron-merge (rest c1) (rest c2)))))
+
+     ;; one of these is empty here
+     (concat c1 c2)))
+  ([c1 c2 & cs]
+   (apply cron-merge (cron-merge c1 c2) cs)))
+
 (defn defcron [func & args]
   (some-> func meta ::chime .close)
   (when args
