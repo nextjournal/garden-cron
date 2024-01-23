@@ -1,0 +1,3 @@
+{:tasks
+ {test {:doc "Run clojure tests"
+        :task (apply clojure "-X:test" *command-line-args*)}}}
