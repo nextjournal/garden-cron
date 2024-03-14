@@ -81,10 +81,55 @@
   ([c1 c2 & cs]
    (apply cron-merge (cron-merge c1 c2) cs)))
 
-(defn defcron [func & args]
+(defn defcron
+  "Schedules a function repeatedly.
+
+  Takes the var containing a function and a cron expression:
+
+  ```
+  (defn rooster [_time]
+  (println \"Cock-a-doodle-doo!\"))
+
+  (defcron #'rooster {:hour [6] :weekday (range 1 6)})
+  ```
+
+  More generally, a cron expression is a map with these keys:
+
+  * `:month`, integers from 1 to 12
+  * `:day`, integers from 1 to 31
+  * `:weekday`, integers from 1 (= Monday) to 7 (= Sunday), 0 is **not** permitted.
+  * `:hour`, integers from 0 to 23
+  * `:minute`, integers from 0 to 60
+  * `:second`, integers from 0 to 60
+
+  The values of the map can be one of these things:
+
+  * A vector, list or set of numbers, to specify the values to activate on.
+  Ranges and steps can be computed using standard Clojure `range`.
+  * The value `true` or `:*` to always activate.
+
+  A cron expression triggers when *all* its keys trigger, subject to the
+  following defaults:
+
+  * A cron expression triggers on every month, unless specified.
+  * A cron expression triggers on every day, unless specified.
+  * A cron expression triggers on every weekday, unless specified.
+  * A cron expression triggers on hour 0, unless specified.
+  * A cron expression triggers on minute 0, unless specified.
+  * A cron expression triggers on second 0, unless specified.
+  * Additionally, if only minutes resp. only seconds are specified, it
+  triggers on any hour resp. any hour and minute, as well.
+  In doubt be more explicit.
+
+  A cron expression can be disabled by calling `defcron` without a
+  schedule (second argument).  This is primarily useful during development.
+
+  An optional third argument to `defcron` specifies the starting time;
+  it defaults to `ZonedDateTime/now`.  This can be used to match against
+  a different time zone or delay scheduling until the software is started."
+  [func & args]
   (some-> func meta ::chime .close)
   (when args
-    (prn (take 10 (apply cron-seq args)))
     (let [ch (chime/chime-at (apply cron-seq args) func)]
       (alter-meta! func #(-> %
                              (assoc ::cron (first args))
