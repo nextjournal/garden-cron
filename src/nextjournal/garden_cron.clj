@@ -1,7 +1,26 @@
 (ns nextjournal.garden-cron
-  (:require [chime.core :as chime])
+  (:require [chime.core :as chime]
+            [malli.core :as m]
+            [malli.error :as me])
   (:import (java.time ZonedDateTime)
            (java.time.temporal ChronoUnit)))
+
+(def cron-element-schema
+  (m/schema [:or
+             [:= :*]
+             [:= true]
+             [:vector int?]
+             [:set int?]
+             [:sequential int?]]))
+
+(def cron-schema
+  (m/schema [:map {:closed true}
+             [:month {:optional true} cron-element-schema]
+             [:day {:optional true} cron-element-schema]
+             [:weekday {:optional true} cron-element-schema]
+             [:hour {:optional true} cron-element-schema]
+             [:minute {:optional true} cron-element-schema]
+             [:second {:optional true} cron-element-schema]]))
 
 (defn- ->pred [d]
   (cond
@@ -58,6 +77,9 @@
   ([cron]
    (cron-seq cron (ZonedDateTime/now)))
   ([cron start]
+   (when-not (m/validate cron-schema cron)
+     (throw (ex-info "invalid cron specification"
+                     (me/humanize (m/explain cron-schema cron)))))
    (rest (iterate #(next-cron cron %) start))))
 
 (defn cron-merge
